@@ -31,6 +31,8 @@ Every tool runs the same gate as `nuclei-mcp`:
 3. Check `eligible_for_bounty` AND `eligible_for_submission`
 4. **Block** if either is false — no override
 
+[H1-Scope-Watcher](https://github.com/tobiasGuta/H1-Scope-Watcher)
+
 ---
 
 ## Quick Start
