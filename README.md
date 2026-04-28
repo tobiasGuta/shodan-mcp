@@ -58,15 +58,6 @@ docker build -t shodan-mcp .
         "mcp/h1-scope"
       ]
     },
-    "nuclei-mcp": {
-      "command": "docker",
-      "args": [
-        "run", "-i", "--rm",
-        "-v", "D:/projects/H1-Scope-Watcher/snapshots:/data/snapshots",
-        "-e", "SNAPSHOTS_DIR=/data/snapshots",
-        "nuclei-mcp"
-      ]
-    },
     "shodan-mcp": {
       "command": "docker",
       "args": [
