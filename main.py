@@ -10,8 +10,9 @@ Exposes four MCP tools to AI agents:
 
 import os
 import sys
+import re
 from mcp.server.fastmcp import FastMCP
-from scope_validator import validate_target, list_scope_summary
+from scope_validator import validate_target, list_scope_summary, _hostname
 from shodan_client import ShodanClient
 
 # ──────────────────────────────────────────────
@@ -143,10 +144,13 @@ def shodan_host(target: str, show_banners: bool = False) -> str:
     if not vr.allowed:
         return f"🚫 LOOKUP BLOCKED\n{vr.reason}\n\nUse list_programs to see in-scope targets."
 
-    matched_id = vr.matched[0].asset_id
+    # Use the clean target for resolution, wait, but validate_target doesn't modify the target.
+    # We should get the clean hostname from scope_validator instead of 'matched_id'
+    clean_target = _hostname(target)
+
     header = (
         f"{vr.reason}\n"
-        f"🔎 Shodan host lookup: {matched_id}\n"
+        f"🔎 Shodan host lookup: {clean_target}\n"
         "─" * 60 + "\n"
     )
 
@@ -156,9 +160,9 @@ def shodan_host(target: str, show_banners: bool = False) -> str:
     except RuntimeError as e:
         return header + f"❌ {e}"
 
-    ips = client.resolve_hostname(matched_id)
+    ips = client.resolve_hostname(clean_target)
     if not ips:
-        return header + f"❌ Could not resolve '{matched_id}' to any IP address."
+        return header + f"❌ Could not resolve '{clean_target}' to any IP address."
 
     # ── Fetch Shodan report per IP ───────────────────────────────────
     sections = [header, f"Resolved to {len(ips)} IP(s): {', '.join(ips)}\n"]
@@ -199,14 +203,23 @@ def shodan_search(target: str, max_results: int = 5) -> str:
     """
     max_results = min(max_results, 20)
 
-    vr = validate_target(target, SNAPSHOTS_DIR)
-    if not vr.allowed:
-        return f"🚫 SEARCH BLOCKED\n{vr.reason}"
+    # Accept Shodan-style 'hostname:' filters (e.g. 'hostname:*.dev.life360.com')
+    # Extract the actual hostname for scope validation.
+    m = re.match(r'^\s*[\"\']?hostname\s*:\s*(?P<h>[^\"\']+)', target, flags=re.I)
+    if m:
+        target_check = m.group('h').strip()
+    else:
+        target_check = target
 
+    vr = validate_target(target_check, SNAPSHOTS_DIR)
+    if not vr.allowed:
+        return f"🚫 SEARCH BLOCKED\n{vr.reason}\n\nUse list_programs to see in-scope targets."
+
+    # Use target_check for the actual shodan query, not matched_id
     matched_id = vr.matched[0].asset_id
     header = (
         f"{vr.reason}\n"
-        f"🔎 Shodan search: hostname:{matched_id}\n"
+        f"🔎 Shodan search: hostname:{target_check}\n"
         "─" * 60 + "\n"
     )
 
@@ -216,7 +229,7 @@ def shodan_search(target: str, max_results: int = 5) -> str:
         return header + f"❌ {e}"
 
     try:
-        result = client.search_hostname(matched_id, max_results)
+        result = client.search_hostname(target_check, max_results)
     except RuntimeError as e:
         return header + f"❌ {e}"
 

@@ -43,7 +43,14 @@ SCANNABLE_TYPES = {"URL", "WILDCARD", "OTHER"}
 
 def _hostname(target: str) -> str:
     """Strip scheme / path / port from a target string → bare hostname."""
-    t = target.strip()
+    t = target.strip().strip("'\"")
+    
+    # Strip Shodan filters if present, e.g. 'hostname:*.dev.life360.com'
+    import re
+    m = re.match(r'^(?:hostname|ssl\.cert\.subject\.cn|domain)\s*:\s*(.+)$', t, flags=re.I)
+    if m:
+        t = m.group(1).strip().strip("'\"")
+        
     if not t.startswith(("http://", "https://")):
         t = "https://" + t
     return urlparse(t).netloc.lower().split(":")[0]
